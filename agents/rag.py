@@ -16,50 +16,105 @@ embeddings = HuggingFaceEmbeddings(
     model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
 
+
 def create_vector_store(pdf_path):
-    loader = PyPDFLoader(pdf_path)
-    documents = loader.load()
 
-    if not documents:
-        raise ValueError("No text found in PDF")
+    try:
+        loader = PyPDFLoader(pdf_path)
+        documents = loader.load()
 
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200
-    )
+        if not documents:
+            raise ValueError("PDF contains no readable pages.")
 
-    chunks = splitter.split_documents(documents)
+        documents = [
+            doc for doc in documents
+            if doc.page_content.strip()
+        ]
 
-    if not chunks:
-        raise ValueError("Could not create text chunks")
+        if not documents:
+            raise ValueError(
+                "No extractable text found. "
+                "The PDF may be scanned or image-based."
+            )
 
-    vector_store = FAISS.from_documents(chunks, embeddings)
-    return vector_store
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,
+            chunk_overlap=200
+        )
+
+        chunks = splitter.split_documents(documents)
+
+        if not chunks:
+            raise ValueError("Could not create PDF text chunks.")
+
+        vector_store = FAISS.from_documents(
+            chunks,
+            embeddings
+        )
+
+        return vector_store
+
+    except Exception as e:
+        raise RuntimeError(f"PDF processing failed: {e}")
+
 
 def ask_pdf(vector_store, question):
-    documents = vector_store.similarity_search(
-        question,
-        k=4
-    )
 
-    context = "\n\n".join(document.page_content for document in documents)
+    if not question.strip():
+        raise ValueError("Question cannot be empty.")
 
-    prompt = f"""
-    You are a PDF question-answering assistant.
+    try:
+        documents = vector_store.similarity_search(
+            question,
+            k=4
+        )
 
-    Answer the question using ONLY the provided context.
+        if not documents:
+            return {
+                "answer": "No relevant information found.",
+                "sources": []
+            }
 
-    If the answer is not available in the context,
-    say that the information was not found in the PDF.
+        context = ""
+        sources = []
 
-    Context:
-    {context}
+        for document in documents:
 
-    Question:
-    {question}
+            page = document.metadata.get("page", 0) + 1
 
-    Answer clearly and concisely.
-    """
+            context += f"""
+Page {page}:
+{document.page_content}
+"""
 
-    response = llm.invoke(prompt)
-    return response.content
+            sources.append({
+                "page": page,
+                "content": document.page_content
+            })
+
+        prompt = f"""
+You are a PDF question-answering assistant.
+
+Answer ONLY using the provided context.
+
+If the answer is unavailable, say:
+"The information was not found in the PDF."
+
+Context:
+{context}
+
+Question:
+{question}
+
+Give a clear and concise answer.
+"""
+
+        response = llm.invoke(prompt)
+
+        return {
+            "answer": response.content,
+            "sources": sources
+        }
+
+    except Exception as e:
+        raise RuntimeError(f"PDF question failed: {e}")

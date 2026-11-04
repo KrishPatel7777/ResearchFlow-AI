@@ -12,10 +12,11 @@ class WorkFlowState(TypedDict, total=False):
     research: str
     df: Any
     question: str
-    vector_store: str
+    vector_store: Any
     data_analysis: str
     answer: str
     report: str
+    sources: list
 
 def research_node(state: WorkFlowState):
     result = run_research(state['topic'])
@@ -29,7 +30,7 @@ def analyst_node(state: WorkFlowState):
 
 def pdf_node(state: WorkFlowState):
     result = ask_pdf(state["vector_store"], state["question"])
-    return {"answer":result}
+    return {"answer":result["answer"], "sources":result["sources"]}
 
 def report_node(state: WorkFlowState):
     report = generate_report(state["topic"], state.get("research", ""), state.get("data_analysis", ""))
