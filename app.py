@@ -3,9 +3,11 @@ import os
 from dotenv import load_dotenv
 import matplotlib.pyplot as plt
 import pandas as pd
+import tempfile
 
 from agents.researcher import run_research
 from agents.analyst import analyze_csv, answer_question, create_chart
+from agents.rag import create_vector_store, ask_pdf
 
 load_dotenv()
 
@@ -26,7 +28,7 @@ page = st.sidebar.radio(
         "Home",
         "Research Assistant",
         "Data Analyst",
-        "PDF Questioning Answering",
+        "PDF Question Answering",
         "Reports"
     ]
 )
@@ -83,7 +85,6 @@ elif page == "Research Assistant":
             file_name="research_report.md",
             mime="text/markdown"
         )
-
 
 elif page == "Data Analyst":
     st.title("📊 Data Analyst Agent")
@@ -156,20 +157,50 @@ elif page == "Data Analyst":
             st.error(f"Error analyzing CSV: {e}")
 
 
-elif page == "PDF Questioning Answering":
-    st.header("PDF Questioning Answering")
 
-    uploaded_file = st.file_uploader("Upload PDF Document", type=["pdf"])
+elif page == "PDF Question Answering":
+    st.title("📄 PDF Question Answering Agent")
 
-    if uploaded_file:
-        st.success(f"Uploaded: {uploaded_file.name}")
-        question = st.text_input("Ask a question about document: ")
+    uploaded_pdf = st.file_uploader("Upload PDF", type=["pdf"])
 
-        if st.button("Ask Question"):
+    if uploaded_pdf is not None:
+        if st.button("Process PDF"):
+            try:
+                with st.spinner("Processing PDF..."):
+
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
+                        temp_file.write(uploaded_pdf.getvalue())
+                        pdf_path = temp_file.name
+
+                    vector_store = create_vector_store(pdf_path)
+
+                    st.session_state["vector_store"] = vector_store
+                    st.success("PDF processed successfully!")
+
+            except Exception as e:
+                st.error(f"Error processing PDF: {e}")
+
+    if "vector_store" in st.session_state:
+
+        st.subheader("Ask Questions")
+
+        question = st.text_input("Enter your question about the PDF")
+
+        if st.button("Ask PDF"):
             if question.strip():
-                st.info("RAG Agent will be connected in a later step")
+                try:
+                    with st.spinner("Finding answer..."):
+
+                        answer = ask_pdf(st.session_state["vector_store"],question)
+
+                    st.markdown("### Answer")
+                    st.write(answer)
+
+                except Exception as e:
+                    st.error(f"Error answering question: {e}")
+
             else:
-                st.warning("Please enter a question")
+                st.warning("Please enter a question.")
 
 elif page == "Reports":
     st.header("Generated Reports")
