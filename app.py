@@ -1,8 +1,11 @@
 import streamlit as st
 import os
 from dotenv import load_dotenv
+import matplotlib.pyplot as plt
+import pandas as pd
 
 from agents.researcher import run_research
+from agents.analyst import analyze_csv, answer_question, create_chart
 
 load_dotenv()
 
@@ -81,27 +84,77 @@ elif page == "Research Assistant":
             mime="text/markdown"
         )
 
+
 elif page == "Data Analyst":
-    st.header("AI Data Analyst")
+    st.title("📊 Data Analyst Agent")
+    st.write("Upload a CSV file to automatically analyze your dataset.")
 
-    uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
+    uploaded_file = st.file_uploader(
+        "Upload CSV",
+        type=["csv"]
+    )
 
-    if uploaded_file:
-        import pandas as pd
+    if uploaded_file is not None:
+        try:
+            df, analysis = analyze_csv(uploaded_file)
 
-        df = pd.read_csv(uploaded_file)
-        
-        st.subheader("Dataset Preview")
-        st.dataframe(df, use_container_width=True)
+            st.success("Dataset loaded successfully!")
 
-        st.subheader("Dataset Information")
-        col1, col2 = st.columns(2)
+            col1, col2 = st.columns(2)
 
-        with col1:
-            st.metric("Rows", df.shape[0])
+            col1.metric("Rows", analysis["rows"])
+            col2.metric("Columns", analysis["columns"])
 
-        with col2:
-            st.metric("Columns", df.shape[1])
+            st.subheader("Dataset Preview")
+            st.dataframe(df.head(10), use_container_width=True)
+
+            st.subheader("Column Information")
+
+            info_df = pd.DataFrame({
+                "Column": df.columns,
+                "Data Type": df.dtypes.astype(str).values,
+                "Missing Values": df.isnull().sum().values
+            })
+
+            st.dataframe(info_df, use_container_width=True)
+
+            st.subheader("Summary Statistics")
+            st.dataframe(
+                df.describe(include="all").fillna(""),
+                use_container_width=True
+            )
+
+            st.subheader("Ask Your Dataset")
+
+            question = st.text_input(
+                "Ask a question",
+                placeholder="Example: What is the average sales?"
+            )
+
+            if st.button("Analyze Question"):
+                if question.strip():
+                    answer = answer_question(df, question)
+                    st.write(answer)
+                else:
+                    st.warning("Please enter a question.")
+
+            st.subheader("Generate Chart")
+
+            column = st.selectbox(
+                "Select a column",
+                df.columns
+            )
+
+            if st.button("Generate Chart"):
+                fig = create_chart(df, column)
+
+                if fig is not None:
+                    st.pyplot(fig)
+                    plt.close(fig)
+
+        except Exception as e:
+            st.error(f"Error analyzing CSV: {e}")
+
 
 elif page == "PDF Questioning Answering":
     st.header("PDF Questioning Answering")
