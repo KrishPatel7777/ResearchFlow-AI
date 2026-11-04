@@ -2,6 +2,8 @@ import streamlit as st
 import os
 from dotenv import load_dotenv
 
+from agents.researcher import run_research
+
 load_dotenv()
 
 st.set_page_config(
@@ -54,9 +56,30 @@ elif page == "Research Assistant":
     topic = st.text_input("Enter Research Topic: ")
 
     if st.button("Start Research"):
-        st.info("Research Agent will be connected in the next step.")
-    else:
-        st.warning("Please enter a research topic.")
+        if topic.strip():
+            try:
+                with st.spinner("Researching...."):
+                    result = run_research(topic)
+
+                    st.session_state["research_result"] = result
+                    st.session_state["research_topic"] = topic
+
+                    st.success("Research Completed")
+            except Exception as e:
+                st.error(f"Research failed")
+        else:
+            st.warning("Please enter a research topic")
+    
+    if "research_result" in st.session_state:
+        st.subheader(f"Research: {st.session_state['research_topic']}")
+        st.markdown(st.session_state["research_result"])
+
+        st.download_button(
+            label="Download Research",
+            data=st.session_state["research_result"],
+            file_name="research_report.md",
+            mime="text/markdown"
+        )
 
 elif page == "Data Analyst":
     st.header("AI Data Analyst")
@@ -98,7 +121,15 @@ elif page == "PDF Questioning Answering":
 elif page == "Reports":
     st.header("Generated Reports")
 
-    st.write(
-        "Your research and analysis reports "
-        "will appear here."
-    )
+    if "research_result" in st.session_state:
+        st.subheader(st.session_state["research_topic"])
+        st.markdown(st.session_state["research_result"])
+
+        st.download_button(
+            "Download Report",
+            data=st.session_state["research_result"],
+            file_name="research_report.md",
+            mime="text/markdown"
+        )
+    else:
+        st.info("No reports generated yet.")
