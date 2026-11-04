@@ -8,6 +8,7 @@ import tempfile
 from agents.researcher import run_research
 from agents.analyst import analyze_csv, answer_question, create_chart
 from agents.rag import create_vector_store, ask_pdf
+from agents.report import generate_report
 
 load_dotenv()
 
@@ -202,18 +203,52 @@ elif page == "PDF Question Answering":
             else:
                 st.warning("Please enter a question.")
 
-elif page == "Reports":
-    st.header("Generated Reports")
 
-    if "research_result" in st.session_state:
-        st.subheader(st.session_state["research_topic"])
-        st.markdown(st.session_state["research_result"])
+elif page == "Reports":
+    st.header("Report Generator")
+
+    topic = st.text_input("Report Topic")
+
+    research = st.session_state.get(
+        "research_result", ""
+    )
+
+    if research:
+        st.success("Research results available")
+
+    if st.button("Generate Report"):
+
+        if topic.strip():
+
+            try:
+                with st.spinner("Generating report..."):
+
+                    report = generate_report(
+                        topic,
+                        research
+                    )
+
+                    st.session_state["generated_report"] = report
+
+                st.success("Report generated!")
+
+            except Exception as e:
+                st.error(f"Report generation failed: {e}")
+
+        else:
+            st.warning("Enter a report topic.")
+
+    if "generated_report" in st.session_state:
+
+        st.subheader("Generated Report")
+
+        st.markdown(
+            st.session_state["generated_report"]
+        )
 
         st.download_button(
             "Download Report",
-            data=st.session_state["research_result"],
-            file_name="research_report.md",
+            data=st.session_state["generated_report"],
+            file_name="researchflow_report.md",
             mime="text/markdown"
         )
-    else:
-        st.info("No reports generated yet.")
