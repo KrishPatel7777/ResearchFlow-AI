@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -18,6 +19,10 @@ st.set_page_config(
     layout="wide"
 )
 
+# =========================
+# HEADER
+# =========================
+
 st.title("ResearchFlow AI")
 
 st.caption(
@@ -31,20 +36,32 @@ st.caption(
 
 st.sidebar.title("Navigation")
 
+page_options = [
+    "Home",
+    "Research Assistant",
+    "Data Analyst",
+    "PDF Question Answering",
+    "Reports"
+]
+
+
+if "page_radio" not in st.session_state:
+    st.session_state["page_radio"] = "Home"
+
+
+def navigate_to(page):
+    st.session_state["page_radio"] = page
+
+
 page = st.sidebar.radio(
     "Choose a Task",
-    [
-        "Home",
-        "Research Assistant",
-        "Data Analyst",
-        "PDF Question Answering",
-        "Reports"
-    ]
+    page_options,
+    key="page_radio"
 )
 
 
 # =========================
-# HOME
+# HOME DASHBOARD
 # =========================
 
 if page == "Home":
@@ -52,24 +69,102 @@ if page == "Home":
     st.header("Welcome to ResearchFlow AI")
 
     st.write(
-        "An AI-powered platform combining research, "
-        "data analysis, document intelligence, "
+        "Your intelligent workspace for research, "
+        "data analysis, document understanding, "
         "and automated report generation."
     )
 
-    col1, col2, col3 = st.columns(3)
+    st.divider()
+
+    # Project statistics
+
+    col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        st.subheader("Research")
-        st.write("Research topics using AI Agents")
+        st.metric("AI Agents", "4")
 
     with col2:
-        st.subheader("Data Analysis")
-        st.write("Analyze CSV datasets")
+        st.metric("Research", "Available")
 
     with col3:
-        st.subheader("Document AI")
-        st.write("Ask questions about PDF documents")
+        st.metric("Data Analysis", "Available")
+
+    with col4:
+        st.metric("PDF Intelligence", "Available")
+
+    st.divider()
+
+    st.subheader("Explore Features")
+
+    col1, col2 = st.columns(2)
+
+    # Research Assistant
+
+    with col1:
+
+        st.markdown("### Research Assistant")
+
+        st.write(
+            "Generate AI-powered research "
+            "on different topics."
+        )
+
+        st.button(
+            "Open Research",
+            key="home_research",
+            on_click=navigate_to,
+            args=("Research Assistant",)
+        )
+
+        # Data Analyst
+
+        st.markdown("### Data Analyst")
+
+        st.write(
+            "Explore datasets, analyze statistics, "
+            "and generate charts."
+        )
+
+        st.button(
+            "Open Data Analyst",
+            key="home_analyst",
+            on_click=navigate_to,
+            args=("Data Analyst",)
+        )
+
+    # PDF and Reports
+
+    with col2:
+
+        st.markdown("### PDF Question Answering")
+
+        st.write(
+            "Ask questions about documents "
+            "and retrieve relevant information."
+        )
+
+        st.button(
+            "Open PDF AI",
+            key="home_pdf",
+            on_click=navigate_to,
+            args=("PDF Question Answering",)
+        )
+
+        # Report Generator
+
+        st.markdown("### Report Generator")
+
+        st.write(
+            "Generate downloadable reports "
+            "using research and dataset analysis."
+        )
+
+        st.button(
+            "Open Reports",
+            key="home_reports",
+            on_click=navigate_to,
+            args=("Reports",)
+        )
 
 
 # =========================
@@ -107,11 +202,15 @@ elif page == "Research Assistant":
 
             except Exception as e:
 
-                st.error(f"Research failed: {e}")
+                st.error(
+                    f"Research failed: {e}"
+                )
 
         else:
 
-            st.warning("Please enter a research topic.")
+            st.warning(
+                "Please enter a research topic."
+            )
 
     if "research_result" in st.session_state:
 
@@ -158,7 +257,8 @@ elif page == "Data Analyst":
 
             else:
 
-                # Store CSV summary for report generation
+                # Store dataset summary
+
                 st.session_state["data_analysis"] = (
                     df.describe(include="all")
                     .fillna("")
@@ -170,6 +270,7 @@ elif page == "Data Analyst":
                 )
 
                 # Dataset metrics
+
                 col1, col2 = st.columns(2)
 
                 col1.metric(
@@ -183,6 +284,7 @@ elif page == "Data Analyst":
                 )
 
                 # Dataset preview
+
                 st.subheader("Dataset Preview")
 
                 st.dataframe(
@@ -191,6 +293,7 @@ elif page == "Data Analyst":
                 )
 
                 # Column information
+
                 st.subheader("Column Information")
 
                 info_df = pd.DataFrame({
@@ -205,6 +308,7 @@ elif page == "Data Analyst":
                 )
 
                 # Summary statistics
+
                 st.subheader("Summary Statistics")
 
                 st.dataframe(
@@ -213,6 +317,7 @@ elif page == "Data Analyst":
                 )
 
                 # Ask dataset
+
                 st.subheader("Ask Your Dataset")
 
                 question = st.text_input(
@@ -226,7 +331,9 @@ elif page == "Data Analyst":
 
                         try:
 
-                            with st.spinner("Analyzing dataset..."):
+                            with st.spinner(
+                                "Analyzing dataset..."
+                            ):
 
                                 result = run_workflow({
                                     "task": "analyst",
@@ -253,6 +360,7 @@ elif page == "Data Analyst":
                         )
 
                 # Generate chart
+
                 st.subheader("Generate Chart")
 
                 column = st.selectbox(
@@ -370,6 +478,7 @@ elif page == "PDF Question Answering":
                         })
 
                     # Answer
+
                     st.markdown("### Answer")
 
                     st.write(
@@ -377,6 +486,7 @@ elif page == "PDF Question Answering":
                     )
 
                     # Sources
+
                     st.markdown("### PDF Sources")
 
                     for source in result.get(
@@ -475,6 +585,7 @@ elif page == "Reports":
             )
 
     # Display generated report
+
     if "generated_report" in st.session_state:
 
         st.subheader(
